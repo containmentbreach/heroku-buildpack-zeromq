@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir>
+
+set -e
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+
+mkdir -p "$CACHE_DIR"
+mkdir -p "$BUILD_DIR/.vendor"
+
+cd "$CACHE_DIR"
+
+ZMQ_NAME="zeromq-$(cat $BUILD_DIR/zmq_version)"
+ZMQ_TARBALL="http://download.zeromq.org/$ZMQ_NAME.tar.gz"
+
+echo "-----> Installing ZeroMQ library"
+
+# rm -rf "$ZMQ_NAME"
+
+if [ ! -d "$ZMQ_NAME" ]; then
+	curl --silent --max-time 60 --location "$ZMQ_TARBALL" | tar -xz
+	cd "$ZMQ_NAME"
+	./configure --without-libsodium --prefix="/app/.vendor"
+	make
+else
+	cd "$ZMQ_NAME"
+fi
+
+make DESTDIR="$BUILD_DIR/.vendor" install &>/dev/null
+mv "$BUILD_DIR"/.vendor/app/.vendor/* "$BUILD_DIR"/.vendor
+rm -rf "$BUILD_DIR"/.vendor/app
+
+export LIBRARY_PATH="$BUILD_DIR/.vendor/lib:$LIBRARY_PATH"
+export INCLUDE_PATH="$BUILD_DIR/.vendor/include:$INCLUDE_PATH"
+export CPATH="$INCLUDE_PATH"
+export CPPPATH="$INCLUDE_PATH"
+export PKG_CONFIG_PATH="$BUILD_DIR/.vendor/lib/pkgconfig:$PKG_CONFIG_PATH"
